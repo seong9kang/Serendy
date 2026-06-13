@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Serendy — AI 여행 의사결정 레이어 (프로토타입)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- 헤더: 메뉴 4개 (Explore / Promotions / Hotels / My Alerts) -->
+  <header class="topbar">
+    <div class="brand" data-view="explore" role="button">
+      <span class="logo">✦</span>
+      <div>
+        <h1>Serendy</h1>
+        <p class="tagline">Travel Intelligence Layer · 프로토타입</p>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" data-view="explore">Explore</button>
+      <button class="nav-btn" data-view="promos">Promotions</button>
+      <button class="nav-btn" data-view="hotels">Hotels</button>
+      <button class="nav-btn" data-view="alerts">My Alerts</button>
+    </nav>
+  </header>
+
+  <main id="app">
+
+    <!-- ① Explore (Home) — 호텔 목록이 아닌 "질문"으로 시작 -->
+    <section id="view-explore" class="view active">
+      <div class="explore-hero">
+        <h2>어떤 여행을 계획하고 계신가요?</h2>
+        <p>목적지를 정하지 않아도 괜찮아요. 조건만 알려주시면 AI가 어디로 갈지부터 함께 정합니다.</p>
+        <div class="chips" id="purposeChips">
+          <button class="chip" data-purpose="휴양">🏖️ 따뜻한 휴양</button>
+          <button class="chip" data-purpose="가족여행">👨‍👩‍👧 가족 여행</button>
+          <button class="chip" data-purpose="허니문">💍 허니문</button>
+          <button class="chip" data-purpose="쇼핑">🛍️ 도시 여행</button>
+          <button class="chip" data-purpose="리조트">🌴 리조트</button>
+          <button class="chip promo-chip" data-goto="promos">🔥 호텔 프로모션 찾기</button>
+        </div>
+        <div class="ai-input">
+          <input id="aiQuery" type="text" placeholder="예: 12월에 따뜻하고 직항으로 갈 수 있는 곳 추천해줘" />
+          <button id="aiAsk" class="primary">AI에게 물어보기</button>
+        </div>
+        <div class="quick-q">
+          <span>이렇게 물어보세요</span>
+          <button class="q" >12월에 따뜻한 곳</button>
+          <button class="q">아이랑 가기 좋은 직항</button>
+          <button class="q">허니문 리조트</button>
+        </div>
+      </div>
+
+      <!-- 대화형 결과 영역 -->
+      <div id="exploreFlow" class="explore-flow"></div>
+
+      <!-- 오늘의 프로모션 미리보기 (MVP 핵심을 홈에서 노출) -->
+      <div class="home-promos">
+        <div class="section-head">
+          <h3>🔥 오늘의 호텔 프로모션</h3>
+          <button class="link-btn" data-view="promos">전체 보기 →</button>
+        </div>
+        <div id="homePromoStrip" class="promo-strip"></div>
+      </div>
+    </section>
+
+    <!-- ② Promotions — 프로모션 목록 → 상세 → 적용 호텔 -->
+    <section id="view-promos" class="view">
+      <div class="hero">
+        <h2>오늘의 호텔 프로모션</h2>
+        <p>Marriott · Hilton · Hyatt · IHG · Accor 프로모션을 한 곳에서. 클릭하면 적용 호텔까지 이어집니다.</p>
+      </div>
+      <div id="promoGrid" class="grid"></div>
+    </section>
+
+    <!-- ③ Hotels — 직접 검색 -->
+    <section id="view-hotels" class="view">
+      <div class="hero">
+        <h2>호텔 검색</h2>
+        <p>호텔명을 검색하면 <b>최저가 · 가격 추세 · 프로모션 · AI 분석</b>까지 한 페이지에서 확인합니다.</p>
+      </div>
+      <div class="search-box card">
+        <input id="hotelSearch" type="text" placeholder="예: 몰디브 리츠칼튼, 메리어트, 발리..." />
+      </div>
+      <div id="hotelList" class="hotel-list"></div>
+    </section>
+
+    <!-- ④ My Alerts — 가격/프로모션 알림 -->
+    <section id="view-alerts" class="view">
+      <div class="hero">
+        <h2>My Alerts</h2>
+        <p>관심 호텔의 <b>목표가 도달</b>이나 <b>새 프로모션</b>이 뜨면 알려드립니다. (매주 다시 방문할 이유)</p>
+      </div>
+      <div id="alertList" class="alert-list"></div>
+    </section>
+
+  </main>
+
+  <!-- 호텔 상세 (가장 중요한 화면) — 전체 오버레이 -->
+  <div id="detail" class="detail-overlay" aria-hidden="true">
+    <div class="detail-sheet" id="detailSheet"></div>
+  </div>
+
+  <!-- 프로모션 상세 오버레이 -->
+  <div id="promoDetail" class="detail-overlay" aria-hidden="true">
+    <div class="detail-sheet" id="promoSheet"></div>
+  </div>
+
+  <footer class="foot">
+    <span>⚠️ 모든 가격·프로모션은 프로토타입 검증용 더미 데이터입니다.</span>
+    <span>Serendy Prototype · docs/flow.md 반영</span>
+  </footer>
+
+  <script src="data/sample.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
