@@ -398,4 +398,10 @@ window.SERENDY_DATA = {
     { id: "a2", kind: "price", hotelId: "h2", target: 470000, note: "목표가 도달 시 알림" },
     { id: "a3", kind: "promo", chain: "Marriott Bonvoy", note: "새 포인트 프로모션 시작 시 알림" },
   ],
+
+  // ── Trip Watch (여행 일정 기반 최적가 추적) 샘플 ───────────
+  tripWatches: [
+    { id: "t1", hotelId: "h2", checkin: "2026-11-12", checkout: "2026-11-15", target: 470000 },
+    { id: "t2", hotelId: "h4", checkin: "2026-08-01", checkout: "2026-08-04", target: 420000 },
+  ],
 };

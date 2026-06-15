@@ -433,6 +433,83 @@
     box.querySelectorAll("[data-view]").forEach((el) => el.addEventListener("click", () => showView(el.dataset.view)));
   }
 
+  // ════════════════════════════════════════════
+  // ★ TRIP WATCH — 여행 일정 기반 최적가 추적
+  // ════════════════════════════════════════════
+  const nights = (a, b) => Math.max(1, Math.round((new Date(b) - new Date(a)) / 86400000));
+  const fmtDate = (s) => s.replace(/-/g, ".").slice(2); // 26.12.20
+
+  function renderTwOptions() {
+    document.getElementById("twHotel").innerHTML =
+      D.hotels.map((h) => `<option value="${h.id}">${h.name} — ${h.city}</option>`).join("");
+  }
+
+  function twCardHTML(t) {
+    const h = hotelById(t.hotelId);
+    const cur = bestChannel(h.prices).value;
+    const n = nights(t.checkin, t.checkout);
+    const lv = priceLevel(cur, h.avgPrice);
+    const hitTarget = t.target && cur <= t.target;
+    const total = cur * n;
+    // 추천 신호: 목표가 도달 or 가격수준이 매수권
+    const signal = hitTarget
+      ? { cls: "buy", txt: `🎯 목표가 도달! 지금 예약하세요`, sub: `${won(cur)} ≤ 목표 ${won(t.target)}` }
+      : lv.buy
+        ? { cls: "buy", txt: `✅ 지금이 좋은 시점입니다`, sub: `평균 대비 ${Math.round((1-cur/h.avgPrice)*100)}% 낮음` }
+        : { cls: "wait", txt: `⏳ 추적 중 — 조금 더 지켜보세요`, sub: t.target ? `목표가까지 ${won(cur - t.target)} 남음` : `평균 대비 ${cur>h.avgPrice?"+":""}${Math.round((cur/h.avgPrice-1)*100)}%` };
+    const spark = miniSpark(h.history.map((v)=>v*1000));
+    return `
+      <div class="tw-card ${signal.cls}" data-hotel="${h.id}">
+        <div class="tw-emoji">${h.image}</div>
+        <div class="tw-body">
+          <div class="tw-name">${h.name} <span class="muted">${h.city}</span></div>
+          <div class="tw-dates">🗓️ ${fmtDate(t.checkin)} ~ ${fmtDate(t.checkout)} · ${n}박${t.target ? ` · 목표 ${won(t.target)}/박` : ""}</div>
+          <div class="tw-signal ${signal.cls}">${signal.txt} <span class="muted sm">${signal.sub}</span></div>
+        </div>
+        <div class="tw-right">
+          ${spark}
+          <div class="tw-price">최저가 <b>${won(cur)}</b><span class="muted sm">/박 · 총 ${won(total)}</span></div>
+          <span class="level ${lv.cls}">현재 ${lv.label}</span>
+        </div>
+        <button class="tw-del" data-del="${t.id}" title="추적 중지">✕</button>
+      </div>`;
+  }
+
+  function miniSpark(data) {
+    const w = 120, h = 36, min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+    const pts = data.map((v, i) => [(i/(data.length-1))*w, h - 4 - ((v-min)/range)*(h-8)]);
+    const line = pts.map((p, i) => (i?"L":"M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+    return `<svg viewBox="0 0 ${w} ${h}" class="mini"><path d="${line}" fill="none" stroke="#6c8cff" stroke-width="2"/>
+      <circle cx="${pts[pts.length-1][0].toFixed(1)}" cy="${pts[pts.length-1][1].toFixed(1)}" r="3" fill="#4ad9c0"/></svg>`;
+  }
+
+  function renderTripWatches() {
+    const box = document.getElementById("twList");
+    if (!D.tripWatches.length) { box.innerHTML = `<div class="empty">추적 중인 일정이 없습니다. 위에서 호텔·날짜를 등록해 보세요.</div>`; return; }
+    box.innerHTML = D.tripWatches.map(twCardHTML).join("");
+    box.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      D.tripWatches = D.tripWatches.filter((x) => x.id !== b.dataset.del);
+      renderTripWatches();
+    }));
+    box.querySelectorAll(".tw-card").forEach((c) => c.addEventListener("click", () => openHotel(c.dataset.hotel)));
+  }
+
+  let twSeq = 100;
+  document.getElementById("twAdd").addEventListener("click", () => {
+    const hotelId = document.getElementById("twHotel").value;
+    const checkin = document.getElementById("twIn").value;
+    const checkout = document.getElementById("twOut").value;
+    const targetRaw = document.getElementById("twTarget").value;
+    if (!checkin || !checkout || new Date(checkout) <= new Date(checkin)) {
+      alert("체크아웃은 체크인 이후 날짜여야 합니다."); return;
+    }
+    D.tripWatches.unshift({ id: "t" + (++twSeq), hotelId, checkin, checkout, target: targetRaw ? parseInt(targetRaw) : null });
+    document.getElementById("twTarget").value = "";
+    renderTripWatches();
+    document.getElementById("twList").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+
   // ── 오버레이 제어 ────────────────────────────
   function openOverlay(which) {
     const el = document.getElementById(which === "detail" ? "detail" : "promoDetail");
@@ -459,4 +536,6 @@
   renderPromos();
   renderHotelList("");
   renderAlerts();
+  renderTwOptions();
+  renderTripWatches();
 })();

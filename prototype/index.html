@@ -87,12 +87,42 @@
       <div id="hotelList" class="hotel-list"></div>
     </section>
 
-    <!-- ④ My Alerts — 가격/프로모션 알림 -->
+    <!-- ④ My Alerts — Trip Watch + 가격/프로모션 알림 -->
     <section id="view-alerts" class="view">
       <div class="hero">
         <h2>My Alerts</h2>
         <p>관심 호텔의 <b>목표가 도달</b>이나 <b>새 프로모션</b>이 뜨면 알려드립니다. (매주 다시 방문할 이유)</p>
       </div>
+
+      <!-- Trip Watch: 여행 일정 기반 최적가 추적 -->
+      <div class="tw-section">
+        <div class="section-head">
+          <h3>🎯 Trip Watch — 여행 일정 최적가 추적</h3>
+          <span class="muted sm">날짜·호텔을 등록하면 출발일까지 가격을 추적해 "지금 예약" 시점을 알려드립니다.</span>
+        </div>
+        <div class="tw-form card">
+          <div class="twf">
+            <label>호텔</label>
+            <select id="twHotel"></select>
+          </div>
+          <div class="twf">
+            <label>체크인</label>
+            <input type="date" id="twIn" value="2026-12-20" />
+          </div>
+          <div class="twf">
+            <label>체크아웃</label>
+            <input type="date" id="twOut" value="2026-12-23" />
+          </div>
+          <div class="twf">
+            <label>목표가 (1박, 선택)</label>
+            <input type="number" id="twTarget" placeholder="예: 400000" step="10000" />
+          </div>
+          <button id="twAdd" class="primary sm">추적 시작</button>
+        </div>
+        <div id="twList" class="tw-list"></div>
+      </div>
+
+      <div class="section-head" style="margin-top:36px"><h3>🔔 가격 · 프로모션 알림</h3></div>
       <div id="alertList" class="alert-list"></div>
     </section>
 

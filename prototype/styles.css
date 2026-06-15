@@ -241,6 +241,39 @@ button.ghost:disabled { color: var(--good); border-color: var(--good); cursor: d
 .applied .ap { margin-left: auto; font-size: 13px; color: var(--muted); }
 .applied .ago { color: var(--brand); font-size: 13px; }
 
+/* Trip Watch */
+.tw-section { margin-bottom: 10px; }
+.tw-section .section-head { align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.tw-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
+.twf { display: flex; flex-direction: column; gap: 6px; }
+.twf label { font-size: 12px; color: var(--muted); }
+.twf select, .twf input { background: var(--bg2); color: var(--text); border: 1px solid var(--line);
+  padding: 11px 13px; border-radius: 10px; font-family: inherit; font-size: 14px; }
+.twf select { min-width: 230px; }
+.twf input[type="date"] { color-scheme: dark; }
+.twf input[type="number"] { width: 150px; }
+.tw-form .primary.sm { padding: 11px 18px; }
+.tw-list { display: flex; flex-direction: column; gap: 12px; }
+.tw-card { display: grid; grid-template-columns: 52px 1fr 200px 32px; gap: 16px; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; cursor: pointer; transition: .15s; position: relative; }
+.tw-card:hover { transform: translateY(-2px); }
+.tw-card.buy { border-color: rgba(74,217,145,.4); }
+.tw-card.wait { border-color: var(--line); }
+.tw-emoji { font-size: 34px; text-align: center; }
+.tw-name { font-size: 16px; font-weight: 700; }
+.tw-name .muted { font-size: 13px; font-weight: 400; margin-left: 6px; }
+.tw-dates { font-size: 13px; color: var(--muted); margin: 5px 0 8px; }
+.tw-signal { font-size: 14px; font-weight: 700; }
+.tw-signal.buy { color: var(--good); }
+.tw-signal.wait { color: var(--gold); }
+.tw-signal .muted { font-weight: 400; margin-left: 6px; }
+.tw-right { text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.tw-right svg.mini { width: 120px; height: 36px; }
+.tw-price { font-size: 13px; } .tw-price b { font-size: 16px; } .tw-price .muted { margin-left: 6px; }
+.tw-del { background: var(--card2); border: 1px solid var(--line); color: var(--muted);
+  width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.tw-del:hover { color: var(--bad); border-color: var(--bad); }
+
 /* My Alerts */
 .alert-list { display: flex; flex-direction: column; gap: 14px; }
 .alert { display: flex; align-items: center; gap: 16px; padding: 18px; background: var(--card);
