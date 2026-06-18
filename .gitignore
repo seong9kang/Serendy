@@ -1,0 +1,11 @@
+# 비밀정보
+.env
+.env.*
+!.env.example
+
+# 수집 산출물 (원본/현재상태/이력) — 코드만 추적, 데이터는 제외
+/data/
+
+# OS / 에디터
+.DS_Store
+node_modules/
