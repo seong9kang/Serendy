@@ -59,13 +59,32 @@ function serp(q, { timeout = 45 } = {}) {
   });
 }
 
-// 기존 homepage 호스트 추출(정규화)
-function existingHost(raw) {
-  if (!raw) return "";
+// 기존 homepage → URL 객체(정규화). 깨진 경우 null.
+function existingUrl(raw) {
+  if (!raw) return null;
   let s = String(raw).trim();
-  const m = s.match(/https?:\/\/[^\s]+/);
-  if (m) s = m[0]; else if (/^[^\s]+\.[^\s]+$/.test(s)) s = "http://" + s; else return "";
-  return host(s);
+  const ms = [...s.matchAll(/https?:\/\//gi)];
+  if (ms.length) s = s.slice(ms[ms.length - 1].index).split(/\s/)[0];
+  else if (/^[^\s]+\.[^\s]+$/.test(s)) s = "http://" + s.split(/\s/)[0];
+  else return null;
+  try { return new URL(s); } catch { return null; }
+}
+function existingHost(raw) { const u = existingUrl(raw); return u ? u.hostname.replace(/^www\./, "").toLowerCase() : ""; }
+
+// HEAD로 리다이렉트를 따라가 최종 랜딩 URL 확정 (단축/vanity URL 교정).
+// GET이 Akamai 403이어도 HEAD는 통과하는 경우가 많음(marriott.com/selcy → /overview/).
+function resolveLanding(url, { timeout = 20 } = {}) {
+  return new Promise((resolve) => {
+    execFile("curl", ["-4", "-sIL", "-m", String(timeout), "-A", UA,
+      "-o", "/dev/null", "-w", "%{http_code} %{url_effective}", url],
+      (err, stdout) => {
+        const m = (stdout || "").match(/^(\d+)\s+(\S+)/);
+        if (!m || Number(m[1]) === 0) return resolve(url); // 실패 시 원본 유지
+        let f = m[2];
+        try { const u = new URL(f); if ((u.port === "443" && u.protocol === "https:") || (u.port === "80" && u.protocol === "http:")) { u.port = ""; f = u.href; } } catch {}
+        resolve(f);
+      });
+  });
 }
 
 async function main() {
@@ -91,9 +110,12 @@ async function main() {
       else if (!official) { verdict = "not_found"; notFound++; }
       else if (exHost && newHost && exHost === newHost) { verdict = "same"; same++; }
       else { verdict = "changed"; changed++; }
+      // 채택 URL(보정이면 구글, 아니면 기존)을 HEAD로 최종 랜딩까지 해소 — 단축/vanity URL 교정
+      const chosen = verdict === "changed" ? official : (existingUrl(h.homepage) ? existingUrl(h.homepage).href : official);
+      const landingUrl = chosen ? await resolveLanding(chosen) : null;
       report.push({ hotelSno: h.hotelSno, name: h.name, region: h.region,
         existing: h.homepage || null, existingHost: exHost,
-        googleUrl: official, googleHost: newHost,
+        googleUrl: official, googleHost: newHost, landingUrl,
         verdict, serpTop: r.results.slice(0, 3), http: r.code, err: r.err });
       process.stdout.write(`\r  진행 ${++done}/${list.length}  (changed ${changed} / same ${same} / not_found ${notFound} / err ${errCnt})    `);
     }
