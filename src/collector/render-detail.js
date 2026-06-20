@@ -41,7 +41,11 @@ async function renderOnce(browser, url, port) {
     try { await page.waitForFunction(() => ((document.body && document.body.innerText) || "").trim().length > 250, { timeout: 18000 }); } catch (_) {}
     await page.waitForTimeout(1200);
     const html = await page.content();
-    const text = await page.evaluate(() => (document.body ? document.body.innerText : "")).catch(() => "");
+    // frameset 대응: 모든 프레임의 가시 텍스트 합산(옛날 호텔 사이트는 본문이 frame 안에 있음)
+    let text = await page.evaluate(() => (document.body ? document.body.innerText : "")).catch(() => "");
+    if (text.trim().length < 250 && page.frames().length > 1) {
+      for (const fr of page.frames()) { try { const t = await fr.evaluate(() => (document.body ? document.body.innerText : "")); if (t) text += "\n" + t; } catch (_) {} }
+    }
     const status = resp ? resp.status() : 0;
     const finalUrl = page.url();
     return { ok: true, status, html, text, finalUrl };
