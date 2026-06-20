@@ -74,7 +74,9 @@ HASDATA_API_KEY=<key>
 ### ⚠️ 핵심 발견 — 데이터센터 IP는 Akamai에 막힌다
 - **Shifter·Playwright 둘 다 Shifter 프록시(DigitalOcean 데이터센터 IP)로 나가므로** Marriott·Hyatt·IHG·Four Seasons의 Akamai가 **IP 평판으로 403** 처리. UA·stealth 무관하게 막힘(구글 CAPTCHA와 같은 원리).
 - **HasData `/scrape/web`(jsRendering=true)는 통과** — 포시즌스 268KB, 보코 1.1MB, 씨마크 80KB 실제 HTML 수신. 응답 구조: `requestMetadata.status==="ok"` + `content`(HTML).
-- 즉 **글로벌 체인 = Shifter/Playwright가 아니라 HasData 경로.** (단 일부 메리어트는 HasData도 봇페이지 ~500자 → 재시도 또는 Maps로 데이터만.)
+- 즉 **글로벌 체인 = Shifter/Playwright가 아니라 HasData 경로.**
+- ⚠️ 로컬도 안 통한다: 로컬(한국 IP) curl·headless·**headed 실제 Chrome 모두 403**. 데이터센터 IP만의 문제가 아니라 Akamai가 자동화 신호+IP를 함께 차단 → HasData가 유일.
+- **HasData 차단도 간헐적**(~500자 Access Denied 페이지): `content>1500 && !blocked` 기준으로 **최대 6회 재시도**하면 통과(메리어트 4곳 전부 1~4회 내 회수). 단축 vanity URL(`marriott.com/selcy`)은 정식 `/overview/` URL로 바꿔야 잘 통과.
 
 ### 끝내 안 되는 유형 (접속 기법 문제 아님)
 - 폐업/도메인 파킹(내용 150~200자 빈 페이지) → 구글 재검색

@@ -46,12 +46,24 @@ function hasdataWeb(url, { timeout = 70 } = {}) {
   });
 }
 
+// Akamai 차단은 간헐적 — 차단페이지(~500자)면 재시도. 통과 기준: content>1500 && !blocked.
+const MAX_TRIES = 6;
+async function hasdataWebRetry(url) {
+  let last;
+  for (let t = 0; t < MAX_TRIES; t++) {
+    const r = await hasdataWeb(url);
+    last = { ...r, tries: t + 1 };
+    if (r.apiCode === 200 && r.pageStatus === "ok" && r.contentChars > 1500 && !r.blocked) return last;
+  }
+  return last;
+}
+
 async function main() {
   const rescue = JSON.parse(fs.readFileSync(RESCUE, "utf8"));
   // 대상: 아직 ok 아니고, URL 후보가 있는 것 (no_candidate 제외)
   const targets = rescue.report.filter((r) => r.status !== "ok" && r.url);
   const skipped = rescue.report.filter((r) => r.status !== "ok" && !r.url);
-  console.log(`[korea] HasData web(JS렌더) 최종 재시도 — ${targets.length}곳 (URL없음 ${skipped.length}곳 제외)\n`);
+  console.log(`[korea] HasData web(JS렌더) 최종 재시도 — ${targets.length}곳 (URL없음 ${skipped.length}곳 제외, 차단시 최대 ${MAX_TRIES}회 재시도)\n`);
 
   const report = [];
   let i = 0, idx = 0, ok = 0, still = 0;
@@ -60,11 +72,11 @@ async function main() {
       const k = idx++;
       if (k >= targets.length) break;
       const t = targets[k];
-      const r = await hasdataWeb(t.url);
-      const good = r.apiCode === 200 && r.pageStatus === "ok" && r.contentChars > 500 && !r.blocked;
+      const r = await hasdataWebRetry(t.url);
+      const good = r.apiCode === 200 && r.pageStatus === "ok" && r.contentChars > 1500 && !r.blocked;
       if (good) ok++; else still++;
       report.push({ hotelSno: t.hotelSno, name: t.name, region: t.region, url: t.url,
-        ok: good, apiCode: r.apiCode, pageStatus: r.pageStatus, contentChars: r.contentChars, blocked: r.blocked, err: r.err });
+        ok: good, apiCode: r.apiCode, pageStatus: r.pageStatus, contentChars: r.contentChars, blocked: r.blocked, tries: r.tries, err: r.err });
       process.stdout.write(`\r  진행 ${++i}/${targets.length} (ok ${ok} / 실패 ${still})   `);
     }
   }
