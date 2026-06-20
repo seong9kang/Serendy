@@ -37,7 +37,9 @@ async function renderOnce(browser, url, port) {
   try {
     const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
     try { await page.waitForLoadState("networkidle", { timeout: 12000 }); } catch (_) {}
-    await page.waitForTimeout(1500);
+    // SPA 하이드레이션 대기: 본문 텍스트가 채워질 때까지 최대 18초 (롯데/시그니엘 등 무거운 SPA)
+    try { await page.waitForFunction(() => ((document.body && document.body.innerText) || "").trim().length > 250, { timeout: 18000 }); } catch (_) {}
+    await page.waitForTimeout(1200);
     const html = await page.content();
     const text = await page.evaluate(() => (document.body ? document.body.innerText : "")).catch(() => "");
     const status = resp ? resp.status() : 0;
@@ -63,7 +65,8 @@ async function renderWithRetry(browser, url, startPort, tries = 3) {
 
 function classify(r) {
   if (!r || !r.ok || (!r.html && !r.text)) return "failed";
-  if (BLOCK_RE.test(r.text) || BLOCK_RE.test(r.html)) return "blocked";
+  // 차단 판정은 가시 텍스트에만 — HTML 스크립트 속 키워드(captcha 위젯 등) 오탐 방지
+  if (BLOCK_RE.test(r.text)) return "blocked";
   if ((r.text || "").length < 250) return "thin";
   return "ok";
 }
