@@ -62,8 +62,29 @@ SHIFTER_PORT_LIST=10565, 10566, ... , 10574
 HASDATA_API_KEY=<key>
 ```
 
+## 접속 실패 복구 파이프라인 (실증, 2026-06-20 전수 412곳)
+
+루트 접속률을 단계적으로 끌어올린 검증된 순서. **366 → 401/412 (97%)**.
+
+1. **구글 URL 보정** (`google-correct.js`): HasData SERP로 공식 URL 확정. `latest.json`의 URL이 깨졌거나 OTA여도 교정. ⚠️ OTA/블로그/위키 제외는 **호스트 경계로 매칭**(부분문자열 금지 — `hotels.com`이 `lahanhotels.com`을 오탐).
+2. **URL 정제 + 루트 폴백** (`rescue-homepage.js`): zero-width 제거, 중복 스킴은 마지막 URL, 콤마 교정, 한글도메인 **punycode 변환**(`new URL()`이 자동). 그리고 깊은 경로가 404면 **`scheme+host` 루트로 폴백**(`…/sb/yy/` 404 → 도메인 루트 200).
+3. **Playwright stealth**: JS 봇월(Distil/Cloudflare 챌린지) 사이트는 실브라우저가 챌린지를 실행해 통과(시그니엘 사례).
+4. **HasData `/scrape/web` (jsRendering=true)**: 글로벌 체인 Akamai 안티봇 우회.
+
+### ⚠️ 핵심 발견 — 데이터센터 IP는 Akamai에 막힌다
+- **Shifter·Playwright 둘 다 Shifter 프록시(DigitalOcean 데이터센터 IP)로 나가므로** Marriott·Hyatt·IHG·Four Seasons의 Akamai가 **IP 평판으로 403** 처리. UA·stealth 무관하게 막힘(구글 CAPTCHA와 같은 원리).
+- **HasData `/scrape/web`(jsRendering=true)는 통과** — 포시즌스 268KB, 보코 1.1MB, 씨마크 80KB 실제 HTML 수신. 응답 구조: `requestMetadata.status==="ok"` + `content`(HTML).
+- 즉 **글로벌 체인 = Shifter/Playwright가 아니라 HasData 경로.** (단 일부 메리어트는 HasData도 봇페이지 ~500자 → 재시도 또는 Maps로 데이터만.)
+
+### 끝내 안 되는 유형 (접속 기법 문제 아님)
+- 폐업/도메인 파킹(내용 150~200자 빈 페이지) → 구글 재검색
+- 공식 홈페이지 부재(OTA만 존재) → HasData Maps로만 데이터
+
 ## 관련 파일
 
 - `src/collector/fetch-detail.js` — Shifter+curl 홈페이지 HTML 수집
 - `src/collector/render-detail.js` — Playwright stealth 렌더링
-- `src/collector/check-homepage.js` — 홈페이지 루트 접속 가능 여부 점검(파싱 없음)
+- `src/collector/check-homepage.js` — 홈페이지 루트 접속 점검(shifter→HasData→local, 파싱 없음)
+- `src/collector/google-correct.js` — HasData SERP로 공식 URL 보정(1단계)
+- `src/collector/rescue-homepage.js` — 실패분 재시도(①정제 ②루트폴백 ③Playwright)
+- `src/collector/hasdata-rescue.js` — 글로벌 체인 HasData web(JS렌더) 최종 재시도

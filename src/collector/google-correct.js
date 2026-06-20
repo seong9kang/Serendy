@@ -30,11 +30,16 @@ const DENY = [
   "tiktok.", "threads.", "daum.net", "google.", "youtube.com", "kakao.com", "pf.kakao",
   "hotelrating.or.kr", "visitkorea.or.kr", "linkedin.", "pinterest.", "djangji.", "ohpennews",
 ];
+function host(u) { try { return new URL(u).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; } }
+// 호스트 경계로 매칭 — 부분문자열 오탐 방지(예: hotels.com ≠ lahanhotels.com)
 function isDenied(url) {
-  const u = url.toLowerCase();
-  return DENY.some((d) => u.includes(d));
+  const h = host(url);
+  if (!h) return true;
+  return DENY.some((d) => {
+    const dom = d.replace(/\.$/, "");
+    return h === dom || h.endsWith("." + dom) || h.includes("." + dom + ".") || h.startsWith(dom + ".");
+  });
 }
-function host(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } }
 
 function serp(q, { timeout = 45 } = {}) {
   return new Promise((resolve) => {
