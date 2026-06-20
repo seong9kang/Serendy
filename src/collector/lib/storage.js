@@ -3,7 +3,7 @@
 //
 // 레이아웃 (프로젝트 루트 data/):
 //   raw/<country>/<date>/<name>.json   원본 API 응답 (감사/재처리용)
-//   hotels/<country>/latest.json       현재 활성 상태 (배열, PK=hotelSno)
+//   hotels/<country>/list/latest.json  현재 활성 상태 (배열, PK=hotelSno)
 //   history/<country>/changes.jsonl    변동분만 append (한 줄 = 한 변경)
 const fs = require("fs");
 const path = require("path");
@@ -17,7 +17,7 @@ function ensureDir(file) {
 
 function countryPaths(country) {
   return {
-    latest: path.join(ROOT, "hotels", country, "latest.json"),
+    latest: path.join(ROOT, "hotels", country, "list", "latest.json"),
     changes: path.join(ROOT, "history", country, "changes.jsonl"),
     raw: (date, name) => path.join(ROOT, "raw", country, date, name),
   };
@@ -108,4 +108,69 @@ function commit(country, { date, records, pk = "hotelSno", track, nameField = "n
   return { new: nNew, updated: nUpd, inactive: nInactive, total: records.length, firstRun: Object.keys(prevMap).length === 0 };
 }
 
-module.exports = { ROOT, countryPaths, saveRaw, loadLatest, diffFields, commit };
+// ── 상세 프로필 계층 (storage-design.md 참조) ───────────────────────────────
+// 정적 프로필: hotels/<country>/profiles/<hotelSno>.json (호텔당 1파일)
+// 동적 가격  : prices/<country>/<hotelSno>.jsonl (shortlist만 append)
+
+function profilePaths(country) {
+  return {
+    dir: path.join(ROOT, "hotels", country, "profiles"),
+    file: (sno) => path.join(ROOT, "hotels", country, "profiles", `${sno}.json`),
+    index: path.join(ROOT, "hotels", country, "profiles.index.json"),
+    price: (sno) => path.join(ROOT, "prices", country, `${sno}.jsonl`),
+  };
+}
+
+function loadProfile(country, sno) {
+  const p = profilePaths(country).file(sno);
+  return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, "utf8")) : null;
+}
+
+function saveProfile(country, profile) {
+  const p = profilePaths(country).file(profile.hotelSno);
+  ensureDir(p);
+  fs.writeFileSync(p, JSON.stringify(profile, null, 2));
+  return p;
+}
+
+// 가격 관측 1건 append (섹션 G)
+function appendPrice(country, sno, observation) {
+  const p = profilePaths(country).price(sno);
+  ensureDir(p);
+  fs.appendFileSync(p, JSON.stringify(observation) + "\n");
+  return p;
+}
+
+// 모든 프로필을 훑어 경량 인덱스 재생성 (목록·정렬·검색용)
+function rebuildIndex(country) {
+  const pp = profilePaths(country);
+  if (!fs.existsSync(pp.dir)) return { count: 0 };
+  const rows = [];
+  for (const f of fs.readdirSync(pp.dir)) {
+    if (!f.endsWith(".json")) continue;
+    const pr = JSON.parse(fs.readFileSync(path.join(pp.dir, f), "utf8"));
+    rows.push({
+      hotelSno: pr.hotelSno,
+      name: pr.identity?.name ?? null,
+      star: pr.identity?.star ?? null,
+      area: pr.location?.area ?? null,
+      lat: pr.location?.lat ?? null,
+      lng: pr.location?.lng ?? null,
+      overall: pr.reviews?.overall ?? null,
+      review_count: pr.reviews?.count ?? null,
+      facility_keys: (pr.facilities || []).filter((x) => x.exists).map((x) => x.facility),
+      room_types: (pr.rooms || []).length,
+      has_profile: true,
+      updated_at: pr.updated_at ?? null,
+    });
+  }
+  rows.sort((a, b) => a.hotelSno - b.hotelSno);
+  ensureDir(pp.index);
+  fs.writeFileSync(pp.index, JSON.stringify(rows, null, 2));
+  return { count: rows.length, index: pp.index };
+}
+
+module.exports = {
+  ROOT, countryPaths, saveRaw, loadLatest, diffFields, commit,
+  profilePaths, loadProfile, saveProfile, appendPrice, rebuildIndex,
+};

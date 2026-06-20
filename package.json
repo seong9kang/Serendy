@@ -1,0 +1,14 @@
+{
+  "name": "serendy-collector",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Serendy 호텔 정보 수집기",
+  "scripts": {
+    "collect:korea": "node src/collector/collect-korea.js",
+    "fetch:korea-detail": "node src/collector/fetch-detail.js",
+    "render:korea-detail": "node src/collector/render-detail.js"
+  },
+  "dependencies": {
+    "playwright": "^1.61.0"
+  }
+}

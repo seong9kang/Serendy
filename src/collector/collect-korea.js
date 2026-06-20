@@ -116,7 +116,7 @@ async function main() {
   if (r.firstRun) console.log(`  최초 수집: 전체 ${r.new}곳을 신규 등록`);
   else console.log(`  변경분: 신규 ${r.new} / 변경 ${r.updated} / 비활성 ${r.inactive}`);
   console.log(`  상세 실패 ${fail}곳`);
-  console.log(`  저장: data/hotels/${COUNTRY}/latest.json · data/history/${COUNTRY}/changes.jsonl · data/raw/${COUNTRY}/${DATE}/`);
+  console.log(`  저장: data/hotels/${COUNTRY}/list/latest.json · data/history/${COUNTRY}/changes.jsonl · data/raw/${COUNTRY}/${DATE}/`);
 }
 
 main();
