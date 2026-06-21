@@ -35,11 +35,13 @@ const DENY = [
   "skyscanner.", "hotellook.", "trip.com", "rakuten", "hotel.com", "priceline.", "wego.", "makemytrip.",
   "kkday.", "ctrip.", "qunar.", "hotelopia.", "expedia.", "hotwire.", "orbitz.", "trivago",
   "myrealtrip.", "tourvis.", "onda.me", "trazy.", "hotelpass.", "ostrovok.", "hotels.cn",
+  "krx.co.kr", "dart.fss.or.kr", "fnguide.", "irgo.co.kr", "comp.fnguide",  // 상장사 공시/IR (호텔 운영사가 상장사일 때 오선별)
 ];
-// OTA 예약 딥링크 패턴(도메인 모르는 마켓플레이스도 거름)
+// OTA 예약 딥링크·문서 패턴(도메인 모르는 마켓플레이스/공시문서도 거름)
 function looksBooking(url) {
   return /[?&](check[_]?in|check[_]?out|checkin|checkout|roomcount|adultcount)/i.test(url) ||
-    /\/(union|products?|booking|reserve|rooms?)\/\d/i.test(url);
+    /\/(union|products?|booking|reserve|rooms?)\/\d/i.test(url) ||
+    /\.(pdf|hwp|docx?|xlsx?|pptx?)(\?|$)/i.test(url);  // 공시 PDF 등 문서
 }
 function host(u) { try { return new URL(u).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; } }
 function isDenied(url) {
@@ -73,18 +75,21 @@ function isGeneric(rawUrl, landingUrl) {
   return false;
 }
 
-// HEAD로 리다이렉트 따라가 최종 랜딩 URL 확정 (단축/브랜드 리다이렉트 교정).
+// HEAD로 리다이렉트 따라가 최종 랜딩 URL + HTTP코드 반환 (단축/브랜드 리다이렉트 교정 + 생사 판정).
 function resolveLanding(url, { timeout = 20 } = {}) {
   return new Promise((resolve) => {
     execFile("curl", ["-4", "-sIL", "-m", String(timeout), "-A", UA, "-o", "/dev/null", "-w", "%{http_code} %{url_effective}", url],
       (err, stdout) => {
         const m = (stdout || "").match(/^(\d+)\s+(\S+)/);
-        if (!m || Number(m[1]) === 0) return resolve(url);
+        if (!m) return resolve({ landing: url, code: 0 });
+        const code = Number(m[1]);
         let f = m[2]; try { const u = new URL(f); if ((u.port === "443" && u.protocol === "https:") || (u.port === "80" && u.protocol === "http:")) { u.port = ""; f = u.href; } } catch {}
-        resolve(f);
+        resolve({ landing: code === 0 ? url : f, code });
       });
   });
 }
+// 죽은 URL 판정: 무응답(0) 또는 서버오류(5xx)/사라짐(404,410). 403 등 안티봇 차단은 '살아있음'으로 봄(step2가 처리).
+const isDead = (code) => code === 0 || code >= 500 || code === 404 || code === 410;
 
 // 1순위: 구글 지도 — website + 기본데이터. ll(좌표)로 장소 바이어스(동명/타지점 오매칭 방지).
 function mapsSearch(q, { ll = null, timeout = 45 } = {}) {
@@ -143,31 +148,35 @@ async function main() {
       const mapsRaw = place.website && !isDenied(place.website) ? place.website : null;
       const seedRaw = existingUrl(h.homepage) ? existingUrl(h.homepage).href : null;
 
-      // HEAD 랜딩 해소(지도/시드)
-      const mapsLanding = mapsRaw ? await resolveLanding(mapsRaw) : null;
-      const seedLanding = seedRaw ? await resolveLanding(seedRaw) : null;
+      // HEAD 랜딩 해소(지도/시드) + 생사 판정
+      const mapsRes = mapsRaw ? await resolveLanding(mapsRaw) : null;
+      const seedRes = seedRaw ? await resolveLanding(seedRaw) : null;
+      const mapsLanding = mapsRes ? mapsRes.landing : null;
+      const seedLanding = seedRes ? seedRes.landing : null;
+      const mapsDead = mapsRes ? isDead(mapsRes.code) : false;
+      const seedDead = seedRes ? isDead(seedRes.code) : false;
 
-      // 2) SERP — 지도 website 없음/제네릭이거나 시드 없을 때 보조
-      let serpTop = [], serpRaw = null, serpLanding = null;
-      if (!mapsRaw || isGeneric(mapsRaw, mapsLanding) || !seedRaw) {
+      // 2) SERP — 지도 website 없음/제네릭/**죽음**이거나 시드 없을 때 보조
+      let serpTop = [], serpRaw = null, serpLanding = null, serpDead = false;
+      if (!mapsRaw || isGeneric(mapsRaw, mapsLanding) || mapsDead || !seedRaw) {
         const sr = await serp(q);
         serpTop = sr.results.slice(0, 3);
         serpRaw = sr.results.find((u) => !isDenied(u) && !looksBooking(u)) || null;
-        serpLanding = serpRaw ? await resolveLanding(serpRaw) : null;
+        if (serpRaw) { const r = await resolveLanding(serpRaw); serpLanding = r.landing; serpDead = isDead(r.code); }
         if (sr.code !== 200 && mr.code !== 200) errCnt++;
       }
 
-      // 3) 후보 구성 → 제네릭 후순위 + 출처 우선순위(maps>seed>serp), 랜딩 기준 중복 제거
+      // 3) 후보 구성 → 죽음·제네릭 후순위 + 출처 우선순위(maps>seed>serp), 랜딩 기준 중복 제거
       const rawCands = [
-        mapsRaw && { source: "maps", url: mapsRaw, landing: mapsLanding },
-        seedRaw && { source: "seed", url: seedRaw, landing: seedLanding },
-        serpRaw && { source: "serp", url: serpRaw, landing: serpLanding },
+        mapsRaw && { source: "maps", url: mapsRaw, landing: mapsLanding, dead: mapsDead },
+        seedRaw && { source: "seed", url: seedRaw, landing: seedLanding, dead: seedDead },
+        serpRaw && { source: "serp", url: serpRaw, landing: serpLanding, dead: serpDead },
       ].filter(Boolean).map((c) => ({ ...c, generic: isGeneric(c.url, c.landing) }));
       const seen = new Set(); const candidates = [];
       const prio = { maps: 0, seed: 1, serp: 2 };
-      for (const c of rawCands.sort((a, b) => (a.generic - b.generic) || (prio[a.source] - prio[b.source]))) {
+      for (const c of rawCands.sort((a, b) => (a.dead - b.dead) || (a.generic - b.generic) || (prio[a.source] - prio[b.source]))) {
         const k = norm(c.landing || c.url); if (seen.has(k)) continue; seen.add(k);
-        candidates.push({ source: c.source, url: c.url, landing: c.landing, generic: c.generic });
+        candidates.push({ source: c.source, url: c.url, landing: c.landing, generic: c.generic, dead: c.dead });
       }
       const chosen = candidates[0] || null;
       const official = chosen ? (chosen.landing || chosen.url) : null;
