@@ -24,6 +24,10 @@
     1. shifter로 접속 시도
     2. 실패시 HasData(`/scrape/web`, jsRendering)로 접속 시도 — 차단 간헐적이면 재시도
     3. 실패시 local 장비에서 접속 시도
+    4. 그래도 실패시(Kasada 등 강한 안티봇 — 예: Hyatt `ERROR:E6020`) **실제 Chrome에 CDP 연결**:
+       - 사용자가 별도 프로필로 디버깅 포트 실행 후 사람이 한 번 통과(`--remote-debugging-port=9222 --user-data-dir=...`)
+       - `chromium.connectOverCDP("http://localhost:9222")` 로 그 세션·쿠키 재사용해 렌더·수집 (`chrome-cdp-fetch.js`)
+       - 하얏트 6곳 전부 이 방법으로 수집 성공(1만~1.6만자)
 
 ## 3. 실제 홈페이지 내용 크롤링
   - 루트에서부터 시작해서 필요시 링크를 따라 정보 수집

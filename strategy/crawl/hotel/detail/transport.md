@@ -81,8 +81,11 @@ HASDATA_API_KEY=<key>
 - **Marriott = HasData 재시도로 회수됨**: 차단은 간헐적(~500자 Access Denied)이라 `content>1500 && !blocked` 기준으로 **최대 6회 재시도**하면 통과(메리어트 전부 회수). 단축 vanity URL은 HEAD로 정식 `/overview/` 확정 후 시도.
 - **Hyatt = HasData로도 미해결**: `hyatt.com` 은 jsRendering=true로도 **856자 빈 SPA 셸(가시 텍스트 0자)** 만 반환 → 공식 홈페이지 접속 불가. ⚠️ 판정 시 `content>1500` 같은 길이 기준 필수(>500만 쓰면 빈 셸을 오탐). 하얏트 데이터는 HasData Maps로 우회.
 
-### 끝내 안 되는 유형 (접속 기법 문제 아님)
-- **Hyatt 6곳**: Akamai+SPA로 HasData도 빈 셸 → HasData Maps로만 데이터
+### Hyatt = Kasada → CDP로 해결
+- Hyatt은 Akamai 아니라 **Kasada** 안티봇(KPSDK 챌린지 / 403 "We're sorry… **ERROR:E6020**"). shifter·HasData·local·Playwright(chromium/firefox)·residential·wait·reload 전부 실패.
+- **해결: 사용자 실제 Chrome에 CDP 연결**(`chrome-cdp-fetch.js`) — 사람이 한 번 통과시킨 세션·쿠키 재사용. 하얏트 6곳 전부 수집 성공(1만~1.6만자). 접속 순서 4순위.
+
+### 그래도 안 되는 유형 (접속 기법 문제 아님)
 - 폐업/도메인 파킹(내용 150~200자 빈 페이지) → 구글 재검색
 - 공식 홈페이지 부재(OTA만 존재) → HasData Maps로만 데이터
 
