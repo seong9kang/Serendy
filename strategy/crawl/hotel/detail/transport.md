@@ -7,8 +7,20 @@
 
 | 대상 | 접속 수단 | 이유 |
 |------|-----------|------|
-| **공식 홈페이지** (객실·시설·정책) | **Shifter 프록시 + Playwright stealth**, 실패 시 HasData → local | JS 렌더링 많음, 안티봇 우회 필요 |
+| **공식 홈페이지** (객실·시설·정책) | **Shifter 프록시 + Playwright stealth**, 실패 시 HasData → local → 실제 Chrome CDP | JS 렌더링 많음, 안티봇 우회 필요 |
 | **구글 검색 / 지도 / 리뷰** | **HasData 전용 Google API** (직접 스크래핑 금지) | Shifter로 접속 시 CAPTCHA 차단 (IP 평판) |
+| **네이버 플레이스** (홈페이지·평점·좌표 보조) | curl + Shifter, `__APOLLO_STATE__` 파싱 (렌더링 불필요) | rate-limit 강함 → 보류, 아래 참고 |
+
+## 네이버 플레이스 (보조 소스 — 현재 보류)
+
+구글 Maps/SERP 대안·교차검증용. **검증 완료된 추출 방법** (`naver-place.js`):
+- 호텔명 검색이 상세로 직행하거나, `pcmap.place.naver.com/place/list?query=` → `__APOLLO_STATE__`의 `placeList...businesses.items[0].__ref = "PlaceListBusinessesItem:{id}"` 로 place id.
+- `pcmap.place.naver.com/accommodation/{id}/home` → `__APOLLO_STATE__`의 `homepages.repr.url` = 공식 홈페이지, **`isDeadUrl`(죽은 URL 여부)까지** 제공.
+- **렌더링 불필요** — 홈페이지가 서버에서 HTML에 임베드됨. curl로 추출.
+- API 키 불필요 (구글과 달리 HasData 안 거침).
+
+⚠️ **한계 — 보류 사유**: 네이버는 IP rate-limit이 매우 공격적. 로컬 단일 IP·**Shifter 데이터센터 IP** 모두 소량은 통과하나 **배치는 즉시 "과도한 접근 요청" 차단**. 한 번 막히면 쿨다운 **~1시간**. ai-fnb-trend는 깨끗한 Shifter 포트 4개 + 10초 딜레이 + 포트 로테이션으로 **신중히 1회** 돌려 성공.
+→ **bulk 수집은 residential 프록시 확보 또는 충분히 식은 깨끗한 IP로 1회 정주행** 필요. 현재는 보류, 구글 기반(412/412)으로 진행.
 
 ## 1. 공식 홈페이지 접속 — 3단계 폴백
 
