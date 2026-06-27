@@ -9,18 +9,22 @@
 |------|-----------|------|
 | **공식 홈페이지** (객실·시설·정책) | **Shifter 프록시 + Playwright stealth**, 실패 시 HasData → local → 실제 Chrome CDP | JS 렌더링 많음, 안티봇 우회 필요 |
 | **구글 검색 / 지도 / 리뷰** | **HasData 전용 Google API** (직접 스크래핑 금지) | Shifter로 접속 시 CAPTCHA 차단 (IP 평판) |
-| **네이버 플레이스** (홈페이지·평점·좌표 보조) | curl + Shifter, `__APOLLO_STATE__` 파싱 (렌더링 불필요) | rate-limit 강함 → 보류, 아래 참고 |
+| **네이버 플레이스** (보조 도구, 메인 플로우 밖) | Shifter + Playwright(세션재사용·4워커) | 구글 공백 보완·교차검증·대체URL 발굴용 |
 
-## 네이버 플레이스 (보조 소스 — 현재 보류)
+## 공식 URL 소스 결정 — 구글로 일관, 네이버는 별도 보조도구
 
-구글 Maps/SERP 대안·교차검증용. **검증 완료된 추출 방법** (`naver-place.js`):
-- 호텔명 검색이 상세로 직행하거나, `pcmap.place.naver.com/place/list?query=` → `__APOLLO_STATE__`의 `placeList...businesses.items[0].__ref = "PlaceListBusinessesItem:{id}"` 로 place id.
-- `pcmap.place.naver.com/accommodation/{id}/home` → `__APOLLO_STATE__`의 `homepages.repr.url` = 공식 홈페이지, **`isDeadUrl`(죽은 URL 여부)까지** 제공.
-- **렌더링 불필요** — 홈페이지가 서버에서 HTML에 임베드됨. curl로 추출.
-- API 키 불필요 (구글과 달리 HasData 안 거침).
+**메인 파이프라인(flow.md 1단계)은 구글로 통일**: 구글 지도(`website`) → 실패 시 구글 검색(SERP). 한 생태계라 좌표·평점 동봉 + 일관성. **412/412 전부 구글 기반으로 확보됨**(지도 353 / 시드 48 / SERP 11).
 
-⚠️ **한계 — 보류 사유**: 네이버는 IP rate-limit이 매우 공격적. 로컬 단일 IP·**Shifter 데이터센터 IP** 모두 소량은 통과하나 **배치는 즉시 "과도한 접근 요청" 차단**. 한 번 막히면 쿨다운 **~1시간**. ai-fnb-trend는 깨끗한 Shifter 포트 4개 + 10초 딜레이 + 포트 로테이션으로 **신중히 1회** 돌려 성공.
-→ **bulk 수집은 residential 프록시 확보 또는 충분히 식은 깨끗한 IP로 1회 정주행** 필요. 현재는 보류, 구글 기반(412/412)으로 진행.
+**네이버 플레이스는 메인 플로우에 넣지 않고 별도 보조 도구(`naver-place.js`)로 유지.** 용도:
+- 구글 지도가 website 못 준 곳(소형 한국호텔) 보완
+- 구글 결과 교차검증(불일치·죽은 URL 탐지)
+- **안티봇 막힌 곳의 대체 URL 발굴** (예: 하얏트리젠시 인천 → 구글은 Kasada 막힌 `hyatt.com`, 네이버는 운영사 `p-city.com` 제공)
+
+### 네이버 추출 방법 (검증 완료, ai-fnb-trend식)
+- **Playwright + Shifter, 워커마다 브라우저+컨텍스트 1개 재사용**(세션 연속) + **4개 shifter 포트 = 4 병렬워커(각자 1 IP)** → rate-limit을 IP 분산으로 회피. (curl 단일스트림은 즉시 차단됨)
+- 추출은 런타임 `window.__APOLLO_STATE__`가 아니라(축약본) **본문텍스트 `홈페이지 {url}` + 원본 HTML(outerHTML) 정규식**: `pcmap.place.naver.com/place/list?query=` → `PlaceListBusinessesItem:{id}` → `/accommodation/{id}/home` → `homepages.repr.url` + `isDeadUrl`.
+- **렌더링·API키 불필요**(홈페이지가 HTML에 임베드, 구글과 달리 HasData 안 거침).
+- ⚠️ rate-limit 핵심 교훈: **delay가 아니라 "세션 재사용 + IP(포트) 분산"이 결정적**. delay는 위험지점(리스트 페이지네이션 등)에만 ~10초. 이미 IP가 탔으면 쿨다운 ~1시간.
 
 ## 1. 공식 홈페이지 접속 — 3단계 폴백
 
