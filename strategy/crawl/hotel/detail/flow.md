@@ -1,6 +1,10 @@
 # 호텔 정보 추출 방법
 
-> 접속 transport 상세는 [`transport.md`](./transport.md) 참고.
+> 접속 transport 상세는 [`transport.md`](./transport.md), 리스트 소스(본토+제주)는 [`../list/korea.md`](../list/korea.md) 참고.
+
+> ⚠️ **제주 별도**: hotelrating.or.kr API엔 제주가 없음 → 제주특별자치도관광협회 엑셀
+> (`/api/static/exceldownload/제주특별자치도관광협회_호텔업등급결정현황.xlsx`)로 별도 수집(3성↑ 78곳).
+> 엑셀엔 좌표·홈페이지 없어 아래 1~2단계(구글 지도)로 동일하게 보완. 한국 = 본토 412 + 제주 78 = 490곳.
 
 ## 1. 구글 지도(우선) + 검색(보조)로 공식 URL·기본데이터 확보
   - **1순위 구글 지도**(HasData Maps search, `localResults[0]`): `website` = 호텔이 직접 등록한 공식 URL.
