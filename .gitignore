@@ -9,3 +9,5 @@
 # OS / 에디터
 .DS_Store
 node_modules/
+dashboard/config.js
+dashboard/data.js

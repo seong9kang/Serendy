@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Serendy · 한국 호텔 412곳 수집 현황</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet" />
+<style>
+  :root{ --bg:#0f1115; --panel:#171a21; --panel2:#1f2430; --line:#2a2f3a; --tx:#e7e9ee; --mut:#9aa3b2;
+    --g5:#e8b923; --g4:#4a90d9; --g3:#3fb27f; --accent:#6c8cff; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans KR",sans-serif;background:var(--bg);color:var(--tx);}
+  header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;font-weight:900;letter-spacing:.5px}
+  header .sub{color:var(--mut);font-size:12.5px}
+  .stats{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:13px}
+  .stat b{font-size:16px;font-weight:900}
+  .stat .g5{color:var(--g5)} .stat .g4{color:var(--g4)} .stat .g3{color:var(--g3)}
+  .filters{padding:11px 22px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--panel)}
+  .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{background:none;border:0;color:var(--mut);padding:7px 13px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700}
+  .seg button.on{background:var(--accent);color:#fff}
+  input[type=search]{background:var(--panel2);border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:7px 11px;font-family:inherit;font-size:13px;min-width:180px}
+  .label{color:var(--mut);font-size:12px;margin-right:2px}
+  .hint{color:var(--mut);font-size:11.5px}
+  .region-bar{padding:9px 22px;border-bottom:1px solid var(--line);display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--panel)}
+  .chip{background:var(--panel2);border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:5px 11px;font-size:12px;cursor:pointer;user-select:none}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .chip.disabled{opacity:.4;cursor:not-allowed}
+  .count{color:var(--mut);font-size:12px;padding:7px 22px;border-bottom:1px solid var(--line)}
+  .wrap{display:flex;height:calc(100vh - 178px)}
+  #maps{flex:1;min-width:0;display:grid;gap:2px;background:var(--line)}
+  #maps.n1{grid-template-columns:1fr;grid-template-rows:1fr}
+  #maps.n2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+  #maps.n3,#maps.n4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+  .pane{position:relative;background:var(--bg);min-height:0;min-width:0}
+  .pane .glmap{position:absolute;inset:0}
+  .pane .pane-title{position:absolute;top:8px;left:8px;z-index:5;background:rgba(15,17,21,.82);border:1px solid var(--line);
+    border-radius:8px;padding:4px 10px;font-size:12.5px;font-weight:700;pointer-events:none}
+  .pane .pane-title b{color:var(--accent)}
+  .list{width:400px;max-width:44vw;overflow-y:auto;border-left:1px solid var(--line);background:var(--panel)}
+  .card{padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+  .card:hover{background:var(--panel2)}
+  .card .top{display:flex;align-items:center;gap:8px}
+  .grade{font-weight:900;font-size:12px;padding:2px 7px;border-radius:6px;color:#101216}
+  .grade.g5{background:var(--g5)} .grade.g4{background:var(--g4)} .grade.g3{background:var(--g3)}
+  .card .name{font-weight:700;font-size:14px}
+  .card .meta{color:var(--mut);font-size:12px;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+  .card a{color:var(--accent);text-decoration:none;font-size:12px}
+  .card a:hover{text-decoration:underline}
+  .rating{color:var(--g5);font-weight:700}
+  .mapboxgl-popup-content{font-family:"Noto Sans KR";font-size:13px;background:#171a21;color:#e7e9ee;border:1px solid #2a2f3a;border-radius:10px}
+  .mapboxgl-popup-content b{font-size:14px}
+  .mapboxgl-popup-tip{border-top-color:#171a21!important;border-bottom-color:#171a21!important}
+  .mapboxgl-popup-close-button{color:#9aa3b2}
+  @media(max-width:760px){ .wrap{flex-direction:column;height:auto} #maps{height:60vh} .list{width:100%;max-width:100%} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>✦ Serendy · 한국 호텔 수집 현황</h1>
+    <div class="sub">국내 3성↑ 관광호텔 — 공식 홈페이지·좌표·평점 (구글 지도→검색 기반)</div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div class="filters">
+  <span class="label">등급</span>
+  <div class="seg" id="gradeSeg">
+    <button data-g="all" class="on">전체</button>
+    <button data-g="5">5★</button><button data-g="4">4★</button><button data-g="3">3★</button>
+  </div>
+  <span class="hint">(여러 개 선택)</span>
+  <span class="label" style="margin-left:14px">접속</span>
+  <div class="seg" id="connSeg">
+    <button data-c="all" class="on">전체</button><button data-c="1">접속됨</button><button data-c="0">실패</button>
+  </div>
+  <div class="seg" id="styleSeg" style="margin-left:auto">
+    <button data-s="light">밝게</button><button data-s="dark" class="on">어둡게</button>
+  </div>
+  <input type="search" id="q" placeholder="호텔명·지역 검색" />
+</div>
+
+<div class="region-bar">
+  <span class="label">지역</span>
+  <span class="chip on" data-r="all">전체</span>
+  <span id="regionChips" style="display:contents"></span>
+  <span class="hint" id="regionHint" style="margin-left:8px">지역 클릭 → 해당 지역 지도 · 최대 4개 선택 시 4분할</span>
+</div>
+
+<div class="count" id="count"></div>
+<div class="wrap">
+  <div id="maps" class="n1"></div>
+  <div class="list" id="list"></div>
+</div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script>
+const HOTELS = window.HOTELS || [];
+const REGIONS = ["서울","경기","인천","부산","대구","광주","대전","울산","세종","강원","충북","충남","전북","전남","경북","경남","제주"];
+const MAX_REGIONS = 4;
+let fGrades = new Set(), fConn = "all", fQ = "", fRegions = [];
+mapboxgl.accessToken = window.MAPBOX_TOKEN || "";
+let STYLE = "mapbox://styles/mapbox/dark-v11";   // 기본 어둡게. 토글로 light 전환
+
+function passNonRegion(h){
+  if(fGrades.size && !fGrades.has(h.grade)) return false;
+  if(fConn!=="all" && (h.connected?"1":"0")!==fConn) return false;
+  if(fQ && !((h.name+(h.region||"")+(h.nameEng||"")).toLowerCase().includes(fQ.toLowerCase()))) return false;
+  return true;
+}
+const hotelsFor = region => HOTELS.filter(h=>passNonRegion(h) && (region?h.region===region:true) && h.lat && h.lng);
+function geojson(region){
+  return { type:"FeatureCollection", features: hotelsFor(region).map(h=>({
+    type:"Feature", properties:{sno:h.hotelSno, grade:h.grade, name:h.name, region:h.region, rooms:h.roomCount||'?', rating:h.rating||'', official:h.official||'', connected:h.connected?1:0},
+    geometry:{type:"Point", coordinates:[h.lng,h.lat]} })) };
+}
+function bounds(region){
+  const hs=hotelsFor(region); if(!hs.length) return null;
+  const b=new mapboxgl.LngLatBounds(); hs.forEach(h=>b.extend([h.lng,h.lat])); return b;
+}
+function addLayers(map){
+  map.addSource('hotels',{type:'geojson',data:geojson(map._region),cluster:true,clusterRadius:42,clusterMaxZoom:13});
+  // 클러스터 (ai-fnb-trend식 step 색/크기)
+  map.addLayer({id:'clusters',type:'circle',source:'hotels',filter:['has','point_count'],paint:{
+    'circle-color':['step',['get','point_count'],'#fbbf24',10,'#f97316',30,'#dc2626'],
+    'circle-radius':['step',['get','point_count'],16,10,22,30,28],
+    'circle-stroke-color':'#fff','circle-stroke-width':2,'circle-opacity':.92}});
+  map.addLayer({id:'cluster-count',type:'symbol',source:'hotels',filter:['has','point_count'],
+    layout:{'text-field':['get','point_count_abbreviated'],'text-font':['DIN Pro Medium','Arial Unicode MS Bold'],'text-size':12},paint:{'text-color':'#1a1206'}});
+  // 개별 호텔 (등급 색)
+  map.addLayer({id:'pts',type:'circle',source:'hotels',filter:['!',['has','point_count']],paint:{
+    'circle-color':['match',['get','grade'],5,'#e8b923',4,'#4a90d9',3,'#3fb27f','#888'],
+    'circle-radius':6,'circle-stroke-color':'#0b0d12','circle-stroke-width':1.2}});
+  // 상호작용
+  map.on('click','clusters',e=>{const f=e.features[0];map.getSource('hotels').getClusterExpansionZoom(f.properties.cluster_id,(err,z)=>{if(!err)map.easeTo({center:f.geometry.coordinates,zoom:z,duration:500});});});
+  map.on('click','pts',e=>{const p=e.features[0].properties,c=e.features[0].geometry.coordinates;
+    new mapboxgl.Popup({offset:12}).setLngLat(c).setHTML(`<b>${p.name}</b><br>${'★'.repeat(p.grade)} · ${p.region} · ${p.rooms}실${p.rating?` · 평점 ${p.rating}`:''}<br>`+(p.official?`<a href="${p.official}" target="_blank" style="color:#6c8cff">공식 홈페이지 ↗</a>`:'(홈페이지 없음)')+(p.connected?'':' <span style="color:#e06">접속실패</span>')).addTo(map);});
+  ['clusters','pts'].forEach(l=>{map.on('mouseenter',l,()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave',l,()=>map.getCanvas().style.cursor='');});
+}
+
+let panes=[];
+function destroyPanes(){ panes.forEach(p=>p.map.remove()); panes=[]; }
+function buildPanes(){
+  destroyPanes();
+  const regions = fRegions.length ? fRegions.slice() : [null];
+  const el=document.getElementById('maps'); el.className='n'+regions.length;
+  el.innerHTML=regions.map((r,i)=>`<div class="pane"><div class="glmap" id="glmap${i}"></div><div class="pane-title">${r?`<b>${r}</b>`:'전국'} <span style="color:var(--mut)">${hotelsFor(r).length}곳</span></div></div>`).join('');
+  regions.forEach((r,i)=>{
+    const b=bounds(r);
+    const map=new mapboxgl.Map({container:'glmap'+i,style:STYLE,center:[127.9,36.4],zoom:r?9:6,attributionControl:false});
+    map._region=r;
+    map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
+    map.on('load',()=>{ addLayers(map); if(b) map.fitBounds(b,{padding:48,maxZoom:14,duration:0}); });
+    panes.push({region:r,map});
+  });
+  window.PANES = panes;
+}
+function refreshData(){ // 등급/접속/검색 변경 시 (패널 수 그대로) — 데이터만 갱신
+  panes.forEach(p=>{ const s=p.map.getSource('hotels'); if(s){s.setData(geojson(p.region)); const b=bounds(p.region); if(b)p.map.fitBounds(b,{padding:48,maxZoom:14,duration:300});}
+    const t=p.map.getContainer().parentElement.querySelector('.pane-title'); if(t)t.innerHTML=`${p.region?`<b>${p.region}</b>`:'전국'} <span style="color:var(--mut)">${hotelsFor(p.region).length}곳</span>`; });
+}
+function renderList(){
+  updateRegionCounts();
+  const list=HOTELS.filter(h=>passNonRegion(h)&&(fRegions.length?fRegions.includes(h.region):true)).sort((a,b)=>b.grade-a.grade||(b.rating||0)-(a.rating||0));
+  document.getElementById('count').textContent=`표시 ${list.length}곳 / 전체 ${HOTELS.length}곳`+(fRegions.length?` · 선택지역: ${fRegions.join(', ')}`:'');
+  document.getElementById('list').innerHTML=list.map(h=>`
+    <div class="card" data-sno="${h.hotelSno}" data-region="${h.region||''}">
+      <div class="top"><span class="grade g${h.grade}">${'★'.repeat(h.grade)}</span><span class="name">${h.name}</span></div>
+      <div class="meta"><span>${h.region||''}</span><span>${h.roomCount||'?'}실</span>${h.rating?`<span class="rating">★ ${h.rating}${h.reviews?` (${h.reviews})`:''}</span>`:''}${h.connected?'':'<span style="color:#e06">접속실패</span>'}</div>
+      ${h.official?`<a href="${h.official}" target="_blank" onclick="event.stopPropagation()">${h.official.replace(/^https?:\/\//,'').slice(0,48)} ↗</a>`:'<span style="color:#666;font-size:12px">홈페이지 없음</span>'}
+    </div>`).join('')||'<div style="padding:30px;color:#888;text-align:center">조건에 맞는 호텔이 없습니다.</div>';
+  document.querySelectorAll('.card').forEach(c=>c.onclick=()=>{
+    const sno=+c.dataset.sno,reg=c.dataset.region,h=HOTELS.find(x=>x.hotelSno===sno);
+    const pane=panes.find(p=>p.region===reg)||panes.find(p=>p.region===null)||panes[0];
+    if(pane&&h){pane.map.flyTo({center:[h.lng,h.lat],zoom:15,duration:700});
+      new mapboxgl.Popup({offset:12}).setLngLat([h.lng,h.lat]).setHTML(`<b>${h.name}</b><br>${'★'.repeat(h.grade)} · ${h.region} · ${h.roomCount||'?'}실`+(h.official?`<br><a href="${h.official}" target="_blank" style="color:#6c8cff">공식 홈페이지 ↗</a>`:'')).addTo(pane.map);}
+  });
+}
+function rebuild(){ buildPanes(); renderList(); }
+function update(){ refreshData(); renderList(); }
+
+// 통계/칩
+(function(){const by=g=>HOTELS.filter(h=>h.grade==g).length,conn=HOTELS.filter(h=>h.connected).length;
+  document.getElementById('stats').innerHTML=`<div class="stat">총 <b>${HOTELS.length}</b></div><div class="stat g5">5★ <b class="g5">${by(5)}</b></div><div class="stat g4">4★ <b class="g4">${by(4)}</b></div><div class="stat g3">3★ <b class="g3">${by(3)}</b></div><div class="stat">접속 <b>${conn}</b></div>`;})();
+(function(){const c={};HOTELS.forEach(h=>c[h.region]=(c[h.region]||0)+1);
+  document.getElementById('regionChips').innerHTML=REGIONS.filter(r=>c[r]).map(r=>`<span class="chip" data-r="${r}">${r} <span class="rc">${c[r]}</span></span>`).join('');})();
+// 등급/접속/검색 기준으로 지역칩 숫자 갱신
+function updateRegionCounts(){
+  document.querySelectorAll('#regionChips .chip').forEach(ch=>{
+    const r=ch.dataset.r, n=HOTELS.filter(h=>passNonRegion(h)&&h.region===r).length;
+    const rc=ch.querySelector('.rc'); if(rc)rc.textContent=n;
+    ch.style.opacity = n===0 ? .4 : '';
+  });
+}
+function syncChips(){
+  document.querySelectorAll('.region-bar .chip').forEach(c=>{const r=c.dataset.r;
+    c.classList.toggle('on', r==="all"?fRegions.length===0:fRegions[0]===r);});
+  document.getElementById('regionHint').textContent=fRegions.length?`${fRegions[0]} 지역 보기 — 다시 누르거나 '전체'로 해제`:'지역 클릭 → 해당 지역으로 줌 (하나만 선택)';
+}
+document.querySelector('.region-bar').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const r=c.dataset.r;
+  if(r==="all"||fRegions[0]===r)fRegions=[]; else fRegions=[r];   // 단일 선택(다시 누르면 해제)
+  syncChips(); rebuild();});  // 지역 변경 → 패널 재구성
+document.getElementById('gradeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const g=b.dataset.g;
+  if(g==="all")fGrades.clear(); else{const n=+g;fGrades.has(n)?fGrades.delete(n):fGrades.add(n);}
+  document.querySelectorAll('#gradeSeg button').forEach(x=>x.classList.toggle('on',x.dataset.g==="all"?fGrades.size===0:fGrades.has(+x.dataset.g)));
+  update();});
+document.getElementById('connSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#connSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fConn=b.dataset.c;update();});
+document.getElementById('q').oninput=e=>{fQ=e.target.value;update();};
+document.getElementById('styleSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#styleSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  STYLE = b.dataset.s==="dark" ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11";
+  rebuild();});
+
+syncChips(); rebuild();
+</script>
+</body>
+</html>
